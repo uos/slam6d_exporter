@@ -12,7 +12,8 @@ using std::endl;
 
 tf::TransformListener *tl;
 
-void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
+void getTransform(double *t, double *ti, double *rP, double *rPT,
+    tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
   listener->lookupTransform ("/odom", "/base_link", time, transform);
@@ -75,7 +76,8 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   char pose_str[13];
   sprintf(pose_str, "scan%03d.pose", j);
   ofstream pose(pose_str);
-  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
+  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl
+    << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
   pose.close();
 
   char scan_str[11];
@@ -97,7 +99,8 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   scan.close();
 }
 
-inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud, const std::string& channel)
+inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud,
+    const std::string& channel)
 {
   for (size_t i = 0; i < cloud->fields.size(); ++i)
   {
@@ -119,7 +122,8 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
   sprintf(scan_str, "scan%03d.3d", j);
   sprintf(pose_str, "scan%03d.pose", j++);
   ofstream pose(pose_str);
-  pose << o_x << " " << o_y << " " << o_z << endl << o_r << " " << o_t << " " << o_p;
+  pose << o_x << " " << o_y << " " << o_z << endl
+    << o_r << " " << o_t << " " << o_p;
   pose.close();
 
   ofstream scan(scan_str);
@@ -158,7 +162,8 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
     int b = (rgb & 0xff);
 
     if(!isnan(x) && !isnan(y) && !isnan(z)) {
-      scan << x << " " << y << " " << z << " " << r << " " << g << " " << b << endl;
+      scan << x << " " << y << " " << z << " "
+        << r << " " << g << " " << b << endl;
     }
 
     ptr += point_step;
@@ -171,6 +176,7 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "slam_exporter");
+  ROS_INFO_STREAM("argv0 " << argv[0]);
   ros::NodeHandle n;
 
   tl = new tf::TransformListener();
