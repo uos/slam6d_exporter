@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
+#include <std_msgs/String.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_listener.h>
 #include "globals.icc"
@@ -11,6 +12,8 @@ using std::cout;
 using std::endl;
 
 tf::TransformListener *tl;
+
+bool needRequest, requested;
 
 void getTransform(double *t, double *ti, double *rP, double *rPT,
     tf::TransformListener *listener, ros::Time time)
@@ -58,12 +61,20 @@ void getTransform(double *t, double *ti, double *rP, double *rPT,
   Matrix4ToEuler(t, rPT, rP);
 }
 
+void reqCallback(const std_msgs::String::ConstPtr& e) {
+  ROS_INFO_STREAM("Request received: " << e->data);
+  requested = true;
+}
+
 void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 {
   //ignore first scan (tf can't transform it and its incomplete anyway)
   static bool first = true;
   if(first) {
     first = false;
+    return;
+  }
+  if(needRequest && !requested) {
     return;
   }
 
@@ -97,6 +108,8 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   }
   cout << "wrote " << i << " points to file " << scan_str << endl;
   scan.close();
+
+    requested = false;
 }
 
 inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud,
@@ -176,11 +189,20 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "slam_exporter");
-  ROS_INFO_STREAM("argv0 " << argv[0]);
+
+  // Only dump points to file when request received.
+  if (argc > 1 && strcmp(argv[1], "--withrequest") == 0) {
+    ROS_INFO("Scan will only be exported when requested as defined by parameter.");
+    needRequest = true;
+  }
+  else needRequest = false;
+    requested = false;
+
   ros::NodeHandle n;
 
   tl = new tf::TransformListener();
   ros::Subscriber cloud = n.subscribe("/assembled_cloud", 1, pcCallback);
+  ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
   //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
   ros::spin();
   return 0;

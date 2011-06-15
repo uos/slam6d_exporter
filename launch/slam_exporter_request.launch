@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="slam_exporter" type="slam_exporter" name="slam_exporter" args="--withrequest" output="screen"/>
+</launch>
