@@ -19,7 +19,9 @@ void getTransform(double *t, double *ti, double *rP, double *rPT,
     tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
-  listener->lookupTransform ("/odom", "/base_link", time, transform);
+
+  // TODO: why is this transforming to base_footprint instead of the frame from the pointcloud's header? (Martin)
+  listener->lookupTransform ("/odom_combined", "/base_footprint", time, transform);
 
   double mat[9];
   double x = transform.getOrigin().getX()*100;
