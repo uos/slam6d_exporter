@@ -1,9 +1,9 @@
 <stack>
-  <description brief="uos-slam">uos-slam</description>
+  <description brief="uos_slam">uos-slam</description>
   <author>Maintained by Jochen Sprickerhof</author>
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/uos-slam</url>
+  <url>http://ros.org/wiki/uos_slam</url>
   <depend stack="ros" />
 
 </stack>
