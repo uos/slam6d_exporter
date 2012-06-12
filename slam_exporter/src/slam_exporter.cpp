@@ -16,9 +16,18 @@ tf::TransformListener *tl_;
 bool needRequest_, requested_;
 std::string target_frame_;
 
-void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, const std::string& source_frame, ros::Time time)
+bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, const std::string& source_frame, ros::Time time)
 {
   tf::StampedTransform transform;
+
+  std::string error_msg;
+  bool success = listener->waitForTransform(target_frame_, source_frame, time, ros::Duration(3.0), ros::Duration(0.01), &error_msg);
+
+  if (!success)
+  {
+    ROS_WARN("Could not get transform, ignoring point cloud! %s", error_msg.c_str());
+    return false;
+  }
 
   listener->lookupTransform(target_frame_, source_frame, time, transform);
 
@@ -60,6 +69,8 @@ void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
   t[15] = 1;
   M4inv(t, ti);
   Matrix4ToEuler(t, rPT, rP);
+
+  return true;
 }
 
 void reqCallback(const std_msgs::String::ConstPtr& e)
@@ -86,7 +97,9 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
   double t[16], ti[16], rP[3], rPT[3];
 
-    getTransform(t, ti, rP, rPT, tl_, e->header.frame_id, e->header.stamp);
+  bool success = getTransform(t, ti, rP, rPT, tl_, e->header.frame_id, e->header.stamp);
+  if (!success)
+    return;
 
   char pose_str[13];
   sprintf(pose_str, "scan%03d.pose", j);
