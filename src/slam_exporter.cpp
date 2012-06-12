@@ -16,12 +16,14 @@ tf::TransformListener *tl_;
 bool needRequest_, requested_;
 std::string target_frame_;
 
-bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, const std::string& source_frame, ros::Time time)
+bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener,
+                  const std::string& source_frame, ros::Time time)
 {
   tf::StampedTransform transform;
 
   std::string error_msg;
-  bool success = listener->waitForTransform(target_frame_, source_frame, time, ros::Duration(3.0), ros::Duration(0.01), &error_msg);
+  bool success = listener->waitForTransform(target_frame_, source_frame, time, ros::Duration(3.0), ros::Duration(0.01),
+                                            &error_msg);
 
   if (!success)
   {
@@ -73,6 +75,15 @@ bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
   return true;
 }
 
+void writePose(int j, double rP[3], double rPT[3])
+{
+  char pose_str[13];
+  sprintf(pose_str, "scan%03d.pose", j);
+  ofstream pose(pose_str);
+  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
+  pose.close();
+}
+
 void reqCallback(const std_msgs::String::ConstPtr& e)
 {
   ROS_INFO_STREAM("Request received: " << e->data);
@@ -88,6 +99,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
     first = false;
     return;
   }
+
   if (needRequest_ && !requested_)
   {
     return;
@@ -101,11 +113,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   if (!success)
     return;
 
-  char pose_str[13];
-  sprintf(pose_str, "scan%03d.pose", j);
-  ofstream pose(pose_str);
-  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
-  pose.close();
+  writePose(j, rP, rPT);
 
   char scan_str[11];
   sprintf(scan_str, "scan%03d.3d", j++);
@@ -148,15 +156,17 @@ inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud, c
 void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
 {
   static int j = 0;
-  char scan_str[11];
-  char pose_str[13];
-  double o_x = 0, o_y = 0, o_z = 0, o_r = 0, o_t = 0, o_p = 0;
-  sprintf(scan_str, "scan%03d.3d", j);
-  sprintf(pose_str, "scan%03d.pose", j++);
-  ofstream pose(pose_str);
-  pose << o_x << " " << o_y << " " << o_z << endl << o_r << " " << o_t << " " << o_p;
-  pose.close();
 
+  double t[16], ti[16], rP[3], rPT[3];
+
+  bool success = getTransform(t, ti, rP, rPT, tl_, cloud->header.frame_id, cloud->header.stamp);
+  if (!success)
+    return;
+
+  writePose(j, rP, rPT);
+
+  char scan_str[11];
+  sprintf(scan_str, "scan%03d.3d", j++);
   ofstream scan(scan_str);
 
   int32_t xi = findChannelIndex(cloud, "x");
@@ -182,19 +192,22 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
   }
 
   const uint8_t* ptr = &cloud->data.front();
+  double p[3];
   for (size_t i = 0; i < point_count; ++i)
   {
-    double x = *reinterpret_cast<const float*>(ptr + xoff) * 100;
-    double y = *reinterpret_cast<const float*>(ptr + yoff) * -100;
-    double z = *reinterpret_cast<const float*>(ptr + zoff) * 100;
+    p[0] = *reinterpret_cast<const float*>(ptr + xoff) * 100;
+    p[1] = *reinterpret_cast<const float*>(ptr + yoff) * -100;
+    p[2] = *reinterpret_cast<const float*>(ptr + zoff) * 100;
     uint32_t rgb = *reinterpret_cast<const uint32_t*>(ptr + rgboff);
     int r = ((rgb >> 16) & 0xff);
     int g = ((rgb >> 8) & 0xff);
     int b = (rgb & 0xff);
 
-    if (!isnan(x) && !isnan(y) && !isnan(z))
+    transform3(ti, p);
+
+    if (!isnan(p[0]) && !isnan(p[1]) && !isnan(p[2]))
     {
-      scan << x << " " << y << " " << z << " " << r << " " << g << " " << b << endl;
+      scan << p[0] << " " << p[1] << " " << p[2] << " " << r << " " << g << " " << b << endl;
     }
 
     ptr += point_step;
