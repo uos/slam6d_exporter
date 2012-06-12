@@ -110,7 +110,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
     scan << p[0] << " " << p[1] << " " << p[2] << endl;
   }
-  cout << "wrote " << i << " points to file " << scan_str << endl;
+  ROS_INFO("wrote %zu points to file %s (backlog: %f s)", i, scan_str, (ros::Time::now() - e->header.stamp).toSec());
   scan.close();
 
   requested_ = false;
@@ -208,7 +208,8 @@ int main(int argc, char **argv)
 
   pn.param("target_frame", target_frame_, std::string("odom_combined"));
 
-  tl_ = new tf::TransformListener();
+  tl_ = new tf::TransformListener(ros::Duration(60.0));
+
   ros::Subscriber cloud = n.subscribe("/assembled_cloud", 100, pcCallback);
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
   //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
