@@ -11,16 +11,17 @@ using std::ofstream;
 using std::cout;
 using std::endl;
 
-tf::TransformListener *tl;
+tf::TransformListener *tl_;
 
-bool needRequest, requested;
+bool needRequest_, requested_;
+std::string target_frame_;
 
 void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
 
   // TODO: why is this transforming to base_footprint instead of the frame from the pointcloud's header? (Martin)
-  listener->lookupTransform("/odom_combined", "/base_footprint", time, transform);
+  listener->lookupTransform(target_frame_, "/base_footprint", time, transform);
 
   double mat[9];
   double x = transform.getOrigin().getX() * 100;
@@ -65,7 +66,7 @@ void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
 void reqCallback(const std_msgs::String::ConstPtr& e)
 {
   ROS_INFO_STREAM("Request received: " << e->data);
-  requested = true;
+  requested_ = true;
 }
 
 void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
@@ -77,7 +78,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
     first = false;
     return;
   }
-  if (needRequest && !requested)
+  if (needRequest_ && !requested_)
   {
     return;
   }
@@ -113,7 +114,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   cout << "wrote " << i << " points to file " << scan_str << endl;
   scan.close();
 
-  requested = false;
+  requested_ = false;
 }
 
 inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud, const std::string& channel)
@@ -196,19 +197,25 @@ int main(int argc, char **argv)
   if (argc > 1 && strcmp(argv[1], "--withrequest") == 0)
   {
     ROS_INFO("Scan will only be exported when requested as defined by parameter.");
-    needRequest = true;
+    needRequest_ = true;
   }
   else
-    needRequest = false;
+    needRequest_ = false;
 
-  requested = false;
+  requested_ = false;
 
   ros::NodeHandle n;
+  ros::NodeHandle pn("~");
 
-  tl = new tf::TransformListener();
+  pn.param("target_frame", target_frame_, std::string("odom_combined"));
+
+  tl_ = new tf::TransformListener();
   ros::Subscriber cloud = n.subscribe("/assembled_cloud", 100, pcCallback);
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
   //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
+
+
+  ROS_INFO("slam_exporter initialized with target_frame = \"%s\"", target_frame_.c_str());
   ros::spin();
   return 0;
 }
