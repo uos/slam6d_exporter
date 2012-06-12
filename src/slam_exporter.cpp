@@ -16,12 +16,11 @@ tf::TransformListener *tl_;
 bool needRequest_, requested_;
 std::string target_frame_;
 
-void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
+void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, const std::string& source_frame, ros::Time time)
 {
   tf::StampedTransform transform;
 
-  // TODO: why is this transforming to base_footprint instead of the frame from the pointcloud's header? (Martin)
-  listener->lookupTransform(target_frame_, "/base_footprint", time, transform);
+  listener->lookupTransform(target_frame_, source_frame, time, transform);
 
   double mat[9];
   double x = transform.getOrigin().getX() * 100;
@@ -87,7 +86,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
   double t[16], ti[16], rP[3], rPT[3];
 
-  getTransform(t, ti, rP, rPT, tl, e->header.stamp);
+    getTransform(t, ti, rP, rPT, tl_, e->header.frame_id, e->header.stamp);
 
   char pose_str[13];
   sprintf(pose_str, "scan%03d.pose", j);
