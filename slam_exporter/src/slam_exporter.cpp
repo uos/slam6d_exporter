@@ -15,18 +15,17 @@ tf::TransformListener *tl;
 
 bool needRequest, requested;
 
-void getTransform(double *t, double *ti, double *rP, double *rPT,
-    tf::TransformListener *listener, ros::Time time)
+void getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
 
   // TODO: why is this transforming to base_footprint instead of the frame from the pointcloud's header? (Martin)
-  listener->lookupTransform ("/odom_combined", "/base_footprint", time, transform);
+  listener->lookupTransform("/odom_combined", "/base_footprint", time, transform);
 
   double mat[9];
-  double x = transform.getOrigin().getX()*100;
-  double y = transform.getOrigin().getY()*100;
-  double z = transform.getOrigin().getZ()*100;
+  double x = transform.getOrigin().getX() * 100;
+  double y = transform.getOrigin().getY() * 100;
+  double z = transform.getOrigin().getZ() * 100;
   mat[0] = transform.getBasis().getRow(0).getX();
   mat[1] = transform.getBasis().getRow(0).getY();
   mat[2] = transform.getBasis().getRow(0).getZ();
@@ -55,15 +54,16 @@ void getTransform(double *t, double *ti, double *rP, double *rPT,
   t[11] = 0.0;
 
   // translation
-  t[12] =  -y;
-  t[13] =  z;
-  t[14] =  x;
+  t[12] = -y;
+  t[13] = z;
+  t[14] = x;
   t[15] = 1;
   M4inv(t, ti);
   Matrix4ToEuler(t, rPT, rP);
 }
 
-void reqCallback(const std_msgs::String::ConstPtr& e) {
+void reqCallback(const std_msgs::String::ConstPtr& e)
+{
   ROS_INFO_STREAM("Request received: " << e->data);
   requested = true;
 }
@@ -72,11 +72,13 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 {
   //ignore first scan (tf can't transform it and its incomplete anyway)
   static bool first = true;
-  if(first) {
+  if (first)
+  {
     first = false;
     return;
   }
-  if(needRequest && !requested) {
+  if (needRequest && !requested)
+  {
     return;
   }
 
@@ -89,8 +91,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   char pose_str[13];
   sprintf(pose_str, "scan%03d.pose", j);
   ofstream pose(pose_str);
-  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl
-    << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
+  pose << rP[0] << " " << rP[1] << " " << rP[2] << endl << deg(rPT[0]) << " " << deg(rPT[1]) << " " << deg(rPT[2]);
   pose.close();
 
   char scan_str[11];
@@ -99,7 +100,8 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
   size_t i;
   double p[3];
-  for(i = 0; i < e->points.size(); i++){
+  for (i = 0; i < e->points.size(); i++)
+  {
     p[0] = e->points[i].y * -100;
     p[1] = e->points[i].z * 100;
     p[2] = e->points[i].x * 100;
@@ -111,11 +113,10 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   cout << "wrote " << i << " points to file " << scan_str << endl;
   scan.close();
 
-    requested = false;
+  requested = false;
 }
 
-inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud,
-    const std::string& channel)
+inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud, const std::string& channel)
 {
   for (size_t i = 0; i < cloud->fields.size(); ++i)
   {
@@ -137,8 +138,7 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
   sprintf(scan_str, "scan%03d.3d", j);
   sprintf(pose_str, "scan%03d.pose", j++);
   ofstream pose(pose_str);
-  pose << o_x << " " << o_y << " " << o_z << endl
-    << o_r << " " << o_t << " " << o_p;
+  pose << o_x << " " << o_y << " " << o_z << endl << o_r << " " << o_t << " " << o_p;
   pose.close();
 
   ofstream scan(scan_str);
@@ -176,9 +176,9 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
     int g = ((rgb >> 8) & 0xff);
     int b = (rgb & 0xff);
 
-    if(!isnan(x) && !isnan(y) && !isnan(z)) {
-      scan << x << " " << y << " " << z << " "
-        << r << " " << g << " " << b << endl;
+    if (!isnan(x) && !isnan(y) && !isnan(z))
+    {
+      scan << x << " " << y << " " << z << " " << r << " " << g << " " << b << endl;
     }
 
     ptr += point_step;
@@ -193,12 +193,15 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "slam_exporter");
 
   // Only dump points to file when request received.
-  if (argc > 1 && strcmp(argv[1], "--withrequest") == 0) {
+  if (argc > 1 && strcmp(argv[1], "--withrequest") == 0)
+  {
     ROS_INFO("Scan will only be exported when requested as defined by parameter.");
     needRequest = true;
   }
-  else needRequest = false;
-    requested = false;
+  else
+    needRequest = false;
+
+  requested = false;
 
   ros::NodeHandle n;
 
