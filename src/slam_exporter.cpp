@@ -121,7 +121,10 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
     transform3(ti, p);
 
-    scan << p[0] << " " << p[1] << " " << p[2] << endl;
+    if (!isnan(p[0]) && !isnan(p[1]) && !isnan(p[2]))
+    {
+      scan << p[0] << " " << p[1] << " " << p[2] << endl;
+    }
   }
   ROS_INFO("wrote %zu points to file %s (backlog: %f s)", i, scan_str, (ros::Time::now() - e->header.stamp).toSec());
   scan.close();
@@ -226,7 +229,6 @@ int main(int argc, char **argv)
   ros::Subscriber cloud = n.subscribe("/assembled_cloud", 100, pcCallback);
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
   //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
-
 
   ROS_INFO("slam_exporter initialized with target_frame = \"%s\"", target_frame_.c_str());
   ros::spin();
