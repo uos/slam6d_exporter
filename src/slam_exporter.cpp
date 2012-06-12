@@ -203,7 +203,7 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   tl = new tf::TransformListener();
-  ros::Subscriber cloud = n.subscribe("/assembled_cloud", 1, pcCallback);
+  ros::Subscriber cloud = n.subscribe("/assembled_cloud", 100, pcCallback);
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
   //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
   ros::spin();
