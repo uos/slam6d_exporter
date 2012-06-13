@@ -127,7 +127,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
     p[1] = e->points[i].z * 100;
     p[2] = e->points[i].x * 100;
 
-    transform3(ti, p);
+    // transform3(ti, p);
 
     if (!isnan(p[0]) && !isnan(p[1]) && !isnan(p[2]))
     {
@@ -203,7 +203,7 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
     int g = ((rgb >> 8) & 0xff);
     int b = (rgb & 0xff);
 
-    transform3(ti, p);
+    // transform3(ti, p);
 
     if (!isnan(p[0]) && !isnan(p[1]) && !isnan(p[2]))
     {
