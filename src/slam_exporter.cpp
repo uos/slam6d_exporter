@@ -4,6 +4,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_listener.h>
 #include "globals.icc"
+#include <pcl_ros/transforms.h>
 
 #include <fstream>
 using std::ofstream;
@@ -14,15 +15,15 @@ using std::endl;
 tf::TransformListener *tl_;
 
 bool needRequest_, requested_;
-std::string target_frame_;
+std::string fixed_frame_;
+std::string robot_frame_;
 
-bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener,
-                  const std::string& source_frame, ros::Time time)
+bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
 
   std::string error_msg;
-  bool success = listener->waitForTransform(target_frame_, source_frame, time, ros::Duration(3.0), ros::Duration(0.01),
+  bool success = listener->waitForTransform(fixed_frame_, robot_frame_, time, ros::Duration(3.0), ros::Duration(0.01),
                                             &error_msg);
 
   if (!success)
@@ -31,7 +32,7 @@ bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
     return false;
   }
 
-  listener->lookupTransform(target_frame_, source_frame, time, transform);
+  listener->lookupTransform(fixed_frame_, robot_frame_, time, transform);
 
   double mat[9];
   double x = transform.getOrigin().getX() * 100;
@@ -90,7 +91,7 @@ void reqCallback(const std_msgs::String::ConstPtr& e)
   requested_ = true;
 }
 
-void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
+void pcCallback(const sensor_msgs::PointCloud::ConstPtr& untransformed_cloud)
 {
   //ignore first scan (tf can't transform it and its incomplete anyway)
   static bool first = true;
@@ -107,13 +108,20 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
   static int j = 0;
 
+  // ----- write transform fixed_frame --> robot_frame to pose file
   double t[16], ti[16], rP[3], rPT[3];
-
-  bool success = getTransform(t, ti, rP, rPT, tl_, e->header.frame_id, e->header.stamp);
+  bool success = getTransform(t, ti, rP, rPT, tl_, untransformed_cloud->header.stamp);
   if (!success)
     return;
 
   writePose(j, rP, rPT);
+
+  // ----- transform point cloud from sensor frame to robot_frame
+  boost::shared_ptr<sensor_msgs::PointCloud> cloud(new sensor_msgs::PointCloud);
+  tl_->transformPointCloud(robot_frame_, *untransformed_cloud, *cloud);
+
+  if (!success)
+    return;
 
   char scan_str[11];
   sprintf(scan_str, "scan%03d.3d", j++);
@@ -121,11 +129,11 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
 
   size_t i;
   double p[3];
-  for (i = 0; i < e->points.size(); i++)
+  for (i = 0; i < cloud->points.size(); i++)
   {
-    p[0] = e->points[i].y * -100;
-    p[1] = e->points[i].z * 100;
-    p[2] = e->points[i].x * -100;
+    p[0] = cloud->points[i].y * -100;
+    p[1] = cloud->points[i].z * 100;
+    p[2] = cloud->points[i].x * -100;
 
     // transform3(ti, p);
 
@@ -134,8 +142,8 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
       scan << p[0] << " " << p[1] << " " << p[2] << endl;
     }
   }
-  ROS_INFO("wrote %zu points to file %s (backlog: %f s)", i, scan_str, (ros::Time::now() - e->header.stamp).toSec());
   scan.close();
+  ROS_INFO("wrote %zu points to file %s (backlog: %f s)", i, scan_str, (ros::Time::now() - cloud->header.stamp).toSec());
 
   requested_ = false;
 }
@@ -153,17 +161,23 @@ inline int32_t findChannelIndex(const sensor_msgs::PointCloud2ConstPtr& cloud, c
   return -1;
 }
 
-void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
+void pc2aCallback(const sensor_msgs::PointCloud2Ptr& untransformed_cloud)
 {
   static int j = 0;
 
+  // ----- write transform fixed_frame --> robot_frame to pose file
   double t[16], ti[16], rP[3], rPT[3];
-
-  bool success = getTransform(t, ti, rP, rPT, tl_, cloud->header.frame_id, cloud->header.stamp);
+  bool success = getTransform(t, ti, rP, rPT, tl_, untransformed_cloud->header.stamp);
   if (!success)
     return;
 
   writePose(j, rP, rPT);
+
+  // ----- transform point cloud from sensor frame to robot_frame
+  boost::shared_ptr<sensor_msgs::PointCloud2> cloud(new sensor_msgs::PointCloud2);
+  success = pcl_ros::transformPointCloud(robot_frame_, *untransformed_cloud, *cloud, *tl_);
+  if (!success)
+    return;
 
   char scan_str[11];
   sprintf(scan_str, "scan%03d.3d", j++);
@@ -201,7 +215,6 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
     p[0] = *reinterpret_cast<const float*>(ptr + yoff) * -100;
     p[1] = *reinterpret_cast<const float*>(ptr + zoff) * 100;
     p[2] = *reinterpret_cast<const float*>(ptr + xoff) * -100;
-
 
     // transform3(ti, p);
 
@@ -249,10 +262,11 @@ int main(int argc, char **argv)
   tl_ = new tf::TransformListener(ros::Duration(60.0));
 
   bool use_point_cloud2;
-  pn.param("target_frame", target_frame_, std::string("odom_combined"));
+  pn.param("fixed_frame", fixed_frame_, std::string("odom_combined"));
+  pn.param("robot_frame", robot_frame_, std::string("base_link"));
   pn.param("use_point_cloud2", use_point_cloud2, true);
 
-  ros::Subscriber sub;  // must be declared outside of "if" scope
+  ros::Subscriber sub; // must be declared outside of "if" scope
   if (use_point_cloud2)
     sub = n.subscribe("points2_in", 100, pc2aCallback);
   else
@@ -260,7 +274,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
 
-  ROS_INFO("slam_exporter initialized with target_frame = \"%s\"", target_frame_.c_str());
+  ROS_INFO("slam_exporter initialized with fixed_frame = \"%s\", robot_frame = \"%s\", ", fixed_frame_.c_str(), robot_frame_.c_str());
   ros::spin();
   return 0;
 }
