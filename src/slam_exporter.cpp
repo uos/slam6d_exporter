@@ -51,23 +51,23 @@ bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
 
   t[0] = mat[4];
   t[1] = -mat[7];
-  t[2] = -mat[1];
+  t[2] = mat[1];
   t[3] = 0.0;
 
   t[4] = -mat[5];
   t[5] = mat[8];
-  t[6] = mat[2];
+  t[6] = -mat[2];
   t[7] = 0.0;
 
-  t[8] = -mat[3];
-  t[9] = mat[6];
+  t[8] = mat[3];
+  t[9] = -mat[6];
   t[10] = mat[0];
   t[11] = 0.0;
 
   // translation
   t[12] = -y;
   t[13] = z;
-  t[14] = x;
+  t[14] = -x;
   t[15] = 1;
   M4inv(t, ti);
   Matrix4ToEuler(t, rPT, rP);
@@ -125,7 +125,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& e)
   {
     p[0] = e->points[i].y * -100;
     p[1] = e->points[i].z * 100;
-    p[2] = e->points[i].x * 100;
+    p[2] = e->points[i].x * -100;
 
     // transform3(ti, p);
 
@@ -182,7 +182,9 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
   const uint32_t xoff = cloud->fields[xi].offset;
   const uint32_t yoff = cloud->fields[yi].offset;
   const uint32_t zoff = cloud->fields[zi].offset;
-  const uint32_t rgboff = cloud->fields[rgbi].offset;
+  uint32_t rgboff = -1;
+  if (rgbi != -1)
+    rgboff = cloud->fields[rgbi].offset;
   const uint32_t point_step = cloud->point_step;
   const size_t point_count = cloud->width * cloud->height;
 
@@ -192,29 +194,38 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& cloud)
   }
 
   const uint8_t* ptr = &cloud->data.front();
+  size_t i;
   double p[3];
-  for (size_t i = 0; i < point_count; ++i)
+  for (i = 0; i < point_count; ++i)
   {
-    p[0] = *reinterpret_cast<const float*>(ptr + xoff) * 100;
-    p[1] = *reinterpret_cast<const float*>(ptr + yoff) * -100;
-    p[2] = *reinterpret_cast<const float*>(ptr + zoff) * 100;
-    uint32_t rgb = *reinterpret_cast<const uint32_t*>(ptr + rgboff);
-    int r = ((rgb >> 16) & 0xff);
-    int g = ((rgb >> 8) & 0xff);
-    int b = (rgb & 0xff);
+    p[0] = *reinterpret_cast<const float*>(ptr + yoff) * -100;
+    p[1] = *reinterpret_cast<const float*>(ptr + zoff) * 100;
+    p[2] = *reinterpret_cast<const float*>(ptr + xoff) * -100;
+
 
     // transform3(ti, p);
 
     if (!isnan(p[0]) && !isnan(p[1]) && !isnan(p[2]))
     {
-      scan << p[0] << " " << p[1] << " " << p[2] << " " << r << " " << g << " " << b << endl;
+      scan << p[0] << " " << p[1] << " " << p[2];
+
+      if (rgbi != -1)
+      {
+        uint32_t rgb = *reinterpret_cast<const uint32_t*>(ptr + rgboff);
+        int r = ((rgb >> 16) & 0xff);
+        int g = ((rgb >> 8) & 0xff);
+        int b = (rgb & 0xff);
+
+        scan << " " << r << " " << g << " " << b;
+      }
+      scan << endl;
     }
 
     ptr += point_step;
   }
 
   scan.close();
-  cout << "wrote " << point_count << " points to file " << scan_str << endl;
+  ROS_INFO("wrote %zu points to file %s (backlog: %f s)", i, scan_str, (ros::Time::now() - cloud->header.stamp).toSec());
 }
 
 int main(int argc, char **argv)
