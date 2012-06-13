@@ -246,13 +246,19 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   ros::NodeHandle pn("~");
 
-  pn.param("target_frame", target_frame_, std::string("odom_combined"));
-
   tl_ = new tf::TransformListener(ros::Duration(60.0));
 
-  ros::Subscriber cloud = n.subscribe("/assembled_cloud", 100, pcCallback);
+  bool use_point_cloud2;
+  pn.param("target_frame", target_frame_, std::string("odom_combined"));
+  pn.param("use_point_cloud2", use_point_cloud2, true);
+
+  ros::Subscriber sub;  // must be declared outside of "if" scope
+  if (use_point_cloud2)
+    sub = n.subscribe("points2_in", 100, pc2aCallback);
+  else
+    sub = n.subscribe("points_in", 100, pcCallback);
+
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
-  //ros::Subscriber cloud = n.subscribe("/kinect/depth/points2", 1, pc2aCallback);
 
   ROS_INFO("slam_exporter initialized with target_frame = \"%s\"", target_frame_.c_str());
   ros::spin();
