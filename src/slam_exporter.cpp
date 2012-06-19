@@ -52,16 +52,16 @@ bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
 
   t[0] = mat[4];
   t[1] = -mat[7];
-  t[2] = mat[1];
+  t[2] = -mat[1];
   t[3] = 0.0;
 
   t[4] = -mat[5];
   t[5] = mat[8];
-  t[6] = -mat[2];
+  t[6] = mat[2];
   t[7] = 0.0;
 
-  t[8] = mat[3];
-  t[9] = -mat[6];
+  t[8] = -mat[3];
+  t[9] = mat[6];
   t[10] = mat[0];
   t[11] = 0.0;
 
@@ -133,7 +133,7 @@ void pcCallback(const sensor_msgs::PointCloud::ConstPtr& untransformed_cloud)
   {
     p[0] = cloud->points[i].y * -100;
     p[1] = cloud->points[i].z * 100;
-    p[2] = cloud->points[i].x * -100;
+    p[2] = cloud->points[i].x * 100;
 
     // transform3(ti, p);
 
@@ -214,7 +214,7 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& untransformed_cloud)
   {
     p[0] = *reinterpret_cast<const float*>(ptr + yoff) * -100;
     p[1] = *reinterpret_cast<const float*>(ptr + zoff) * 100;
-    p[2] = *reinterpret_cast<const float*>(ptr + xoff) * -100;
+    p[2] = *reinterpret_cast<const float*>(ptr + xoff) * 100;
 
     // transform3(ti, p);
 
