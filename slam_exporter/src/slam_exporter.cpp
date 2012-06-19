@@ -68,7 +68,7 @@ bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformL
   // translation
   t[12] = -y;
   t[13] = z;
-  t[14] = -x;
+  t[14] = x;
   t[15] = 1;
   M4inv(t, ti);
   Matrix4ToEuler(t, rPT, rP);
