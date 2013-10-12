@@ -14,17 +14,20 @@ using std::endl;
 
 tf::TransformListener *tl_;
 
-bool needRequest_, requested_;
+bool needRequest_;
+bool requested_;
+bool use_point_cloud2_;
 std::string fixed_frame_;
 std::string robot_frame_;
+std::string pc_topic_;
+std::string request_topic_;
 
 bool getTransform(double *t, double *ti, double *rP, double *rPT, tf::TransformListener *listener, ros::Time time)
 {
   tf::StampedTransform transform;
 
   std::string error_msg;
-  bool success = listener->waitForTransform(fixed_frame_, robot_frame_, time, ros::Duration(3.0), ros::Duration(0.01),
-                                            &error_msg);
+  bool success = listener->waitForTransform(fixed_frame_, robot_frame_, time, ros::Duration(3.0), ros::Duration(0.01), &error_msg);
 
   if (!success)
   {
@@ -261,18 +264,19 @@ int main(int argc, char **argv)
 
   tl_ = new tf::TransformListener(ros::Duration(60.0));
 
-  bool use_point_cloud2;
   pn.param("fixed_frame", fixed_frame_, std::string("odom_combined"));
   pn.param("robot_frame", robot_frame_, std::string("base_link"));
-  pn.param("use_point_cloud2", use_point_cloud2, true);
+  pn.param("pc_topic", pc_topic_, std::string("/points_in"));
+  pn.param("request_topic", request_topic_, std::string("/request"));
+  pn.param("use_point_cloud2", use_point_cloud2_, true);
 
   ros::Subscriber sub; // must be declared outside of "if" scope
-  if (use_point_cloud2)
-    sub = n.subscribe("points2_in", 100, pc2aCallback);
+  if (use_point_cloud2_)
+    sub = n.subscribe(pc_topic_, 100, pc2aCallback);
   else
-    sub = n.subscribe("points_in", 100, pcCallback);
+    sub = n.subscribe(pc_topic_, 100, pcCallback);
 
-  ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
+  ros::Subscriber scanRequest = n.subscribe(request_topic_, 1, reqCallback);
 
   ROS_INFO("slam_exporter initialized with fixed_frame = \"%s\", robot_frame = \"%s\", ", fixed_frame_.c_str(), robot_frame_.c_str());
   ros::spin();
