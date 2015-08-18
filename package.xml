@@ -1,12 +1,12 @@
 <package>
-  <name>slam_exporter</name>
+  <name>slam6d_exporter</name>
   <version>1.0.0</version>
-  <description>slam_exporter package</description>
+  <description>slam6d_exporter package</description>
   <maintainer email="ros@jochen.sprickerhof.de">Jochen Sprickerhof</maintainer>
 
   <license>BSD</license>
 
-  <url type="website">http://ros.org/wiki/slam_exporter</url>
+  <url type="website">http://ros.org/wiki/slam6d_exporter</url>
   <!-- <url type="bugtracker"></url> -->
 
   <author>Jochen Sprickerhof</author>

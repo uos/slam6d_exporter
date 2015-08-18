@@ -243,7 +243,7 @@ void pc2aCallback(const sensor_msgs::PointCloud2Ptr& untransformed_cloud)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "slam_exporter");
+  ros::init(argc, argv, "slam6d_exporter");
 
   // Only dump points to file when request received.
   if (argc > 1 && strcmp(argv[1], "--withrequest") == 0)
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber scanRequest = n.subscribe("/request", 1, reqCallback);
 
-  ROS_INFO("slam_exporter initialized with fixed_frame = \"%s\", robot_frame = \"%s\", ", fixed_frame_.c_str(), robot_frame_.c_str());
+  ROS_INFO("slam6d_exporter initialized with fixed_frame = \"%s\", robot_frame = \"%s\", ", fixed_frame_.c_str(), robot_frame_.c_str());
   ros::spin();
   return 0;
 }
